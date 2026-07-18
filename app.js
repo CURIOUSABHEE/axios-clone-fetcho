@@ -4,17 +4,20 @@ import fetcho from "./fetcho.js";
 const api = fetcho.create({
     baseURL: 'https://jsonplaceholder.typicode.com/',
     timeout: 1000,
-    headers: {'Content-Type': 'application/json'}
+    headers: {'Content-Type': 'application/json', 'x-api-key': 'key'}
 })
 
 
 
 async function main() {
-    const response = await api.get("/todos")
+    const response = await api.get("/todos", {
+        headers: {
+            'Content-Type': 'application/xml', 
+            'x-api-key': 'sajdkfhl',
+            'x-idempotency-key' : "jaskdfhalskj"
+        }
+    })
     const data = await response.json()
-    // console.log("_____Response____")
-    // console.log(response)
-    // console.log("_____Final___Response____")
     console.log(data)
 }
 
