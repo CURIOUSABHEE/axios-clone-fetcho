@@ -1,38 +1,38 @@
 
 function mergeConfig(defaults = {}, config = {}) {
-  return {
-    ...defaults,
-    ...config,
-    headers: {
-      ...(defaults.headers || {}),
-      ...(config.headers || {}),
-    },
-  };
+    return {
+        ...defaults,
+        ...config,
+        headers: {
+        ...(defaults.headers || {}),
+        ...(config.headers || {}),
+        },
+    };
 }
 
 class InterceptorManager {
-  constructor() {
-    this.handlers = [];
-  }
-
-  use(success, fail) {
-    this.handlers.push({
-      success,
-      fail,
-    });
-
-    return this.handlers.length - 1;
-  }
-
-  eject(id) {
-    if (this.handlers[id]) {
-      this.handlers[id] = null;
+    constructor() {
+        this.handlers = [];
     }
-  }
 
-  clear() {
-    this.handlers = [];
-  }
+    use(success, fail) {
+        this.handlers.push({
+            success,
+            fail,
+        });
+
+        return this.handlers.length - 1;
+    }
+
+    eject(id) {
+        if (this.handlers[id]) {
+            this.handlers[id] = null;
+        }
+    }
+
+    clear() {
+        this.handlers = [];
+    }
 }
 
 
@@ -80,7 +80,7 @@ class Fetcho {
         }
 
         return promise;
-   }
+    }
 
     async dispatchRequest({ url, config }) {
         const controller = new AbortController();
@@ -146,19 +146,16 @@ class Fetcho {
 
     patch(url, data, config = {}) {
         return this.request(url, {
-        ...config,
-        method: "PATCH",
-        body: JSON.stringify(data),
+            ...config,
+            method: "PATCH",
+            body: JSON.stringify(data),
         });
     }
 }
 
-// ===========================
-// create()
-// ===========================
 
 function create(config) {
-  return new Fetcho(config);
+    return new Fetcho(config);
 }
 
 export default {
