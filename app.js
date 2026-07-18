@@ -7,7 +7,7 @@ const api = fetcho.create({
     headers: {'Content-Type': 'application/json', 'x-api-key': 'key'}
 })
 
-api.addRequestInterceptor((config)=>{
+api.interceptors.request.use((config)=>{
     // Performaing any task
     console.log("Interceptor config received: ", config)
     return config
@@ -16,7 +16,7 @@ api.addRequestInterceptor((config)=>{
     return Promise.reject(error)
 })
 
-api.addResponseInterceptor((response)=>{
+api.interceptors.response.use((response)=>{
     // Performaing any task
     console.log("Interceptor Response received: ", response)
     return response

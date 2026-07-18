@@ -1,102 +1,166 @@
-class Fetcho{
-    config = {
-        timeout: 1000,
-        headers : {
-            'Content-Type': 'application/json'
-        }
-    }
-    requestInterceptor = [];
-    responseInterceptor = [];
 
-    constructor(config){
-        this.config = this.mergedConfig(config);
-    }
+function mergeConfig(defaults = {}, config = {}) {
+  return {
+    ...defaults,
+    ...config,
+    headers: {
+      ...(defaults.headers || {}),
+      ...(config.headers || {}),
+    },
+  };
+}
 
-    request(url, config){
-        const finalConf = this.mergedConfig(config)
-        let promise = Promise.resolve({
+class InterceptorManager {
+  constructor() {
+    this.handlers = [];
+  }
+
+  use(success, fail) {
+    this.handlers.push({
+      success,
+      fail,
+    });
+
+    return this.handlers.length - 1;
+  }
+
+  eject(id) {
+    if (this.handlers[id]) {
+      this.handlers[id] = null;
+    }
+  }
+
+  clear() {
+    this.handlers = [];
+  }
+}
+
+
+class Fetcho {
+    constructor(config = {}) {
+        this.defaults = mergeConfig(
+        {
+            timeout: 1000,
+            headers: {
+                "Content-Type": "application/json",
+            },
+        },
+        config
+        );
+
+        this.interceptors = {
+            request: new InterceptorManager(),
+            response: new InterceptorManager(),
+        };
+    }
+ 
+    request(url, config = {}) {
+        const request = {
             url,
-            config: finalConf
-        })
+            config: mergeConfig(this.defaults, config),
+        };
+
+        let promise = Promise.resolve(request);
+
         const chain = [
-            ...this.requestInterceptor,
-            {successFn: this.dispatchUrl.bind(this)},
-            ...this.responseInterceptor
-        ]
+            ...this.interceptors.request.handlers,
+            {
+                success: this.dispatchRequest.bind(this),
+            },
+            ...this.interceptors.response.handlers,
+        ];
 
-        for (const {successFn, failFn} of chain){
-            promise = promise.then((res)=>{
-                try {
-                    return successFn(res);
-                } catch(err){
-                    if (failFn) return failFn(err);
-                    return Promise.reject(err)
-                }
-            }, (err)=>{
-                if (failFn) return failFn(err);
-                return Promise.reject(err)
-            })
+        for (const handler of chain) {
+            if (!handler) continue;
+
+            promise = promise.then(
+                handler.success,
+                handler.fail
+            );
         }
+
         return promise;
-    }
+   }
 
+    async dispatchRequest({ url, config }) {
+        const controller = new AbortController();
 
-    async dispatchUrl({url, config}){
-        // const finalConf = this.mergedConfig(config)
-        // console.log('final', finalConf)
-        const timeout = config.timeout
+        let timer = null;
 
-        const abortController = new AbortController()
-        let timeoutId;
-        if(timeout){
-            timeoutId = setTimeout(()=> abortController.abort(), timeout)
+        if (config.timeout) {
+            timer = setTimeout(() => {
+                controller.abort();
+            }, config.timeout);
         }
 
-        try{
-            const response = await fetch(`${this.config.baseURL}${url}`, {...config, signal: abortController.signal})
-            return response
-        } finally{
-            timeoutId && clearTimeout(timeoutId)
+        try {
+            const response = await fetch(
+                `${config.baseURL || ""}${url}`,
+                {
+                ...config,
+                signal: controller.signal,
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                `HTTP Error ${response.status}`
+                );
+            }
+
+            return response;
+        } finally {
+            if (timer) clearTimeout(timer);
         }
     }
 
-    async get(url, config){
-        return this.request(url, {...config, method: 'GET'})
-    }
-    async post(url, data, config){
+    get(url, config = {}) {
         return this.request(url, {
             ...config,
-            method: "POST",
-            body: JSON.stringify(data)
+            method: "GET",
         });
     }
 
-    mergedConfig(config){
-        return {
-            ...this.config,
+    delete(url, config = {}) {
+        return this.request(url, {
             ...config,
-            headers: {
-                ...(this.config?.headers || {}),
-                ...(config?.headers || {}),
-            }
-        }
+            method: "DELETE",
+        });
     }
 
-    addRequestInterceptor(successFn, failFn){
-        this.requestInterceptor.push({successFn, failFn})
+    post(url, data, config = {}) {
+        return this.request(url, {
+            ...config,
+            method: "POST",
+            body: JSON.stringify(data),
+        });
     }
 
-    addResponseInterceptor(successFn, failFn){
-        this.responseInterceptor.push({successFn, failFn})
+    put(url, data, config = {}) {
+        return this.request(url, {
+            ...config,
+            method: "PUT",
+            body: JSON.stringify(data),
+        });
+    }
+
+    patch(url, data, config = {}) {
+        return this.request(url, {
+        ...config,
+        method: "PATCH",
+        body: JSON.stringify(data),
+        });
     }
 }
 
+// ===========================
+// create()
+// ===========================
 
-function create(config){
-    return new Fetcho(config)
+function create(config) {
+  return new Fetcho(config);
 }
-
 
 export default {
-    create,
-}
+  create,
+};
